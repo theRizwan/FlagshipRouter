@@ -81,6 +81,19 @@ if (args[0] === "xai" && args[1] === "video") {
   return;
 }
 
+// `flagshiprouter autostart …` manages the hidden logon item — no local server, no
+// runtime deps. Usable as `npx flagshiprouter autostart enable`.
+if (args[0] === "autostart") {
+  const { run } = require("./src/cli/commands/autostart");
+  run(args.slice(1))
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      console.error(`❌ ${err?.message || err}`);
+      process.exit(1);
+    });
+  return;
+}
+
 // `flagshiprouter connect <url>` configures local CLI tools against a remote server, and
 // `flagshiprouter show` prints what they're currently set to — no local server, no
 // runtime deps. Usable via `npx flagshiprouter …`.
@@ -169,6 +182,9 @@ Options:
   -v, --version       Show version
 
 Commands:
+  autostart <enable|disable|status>
+                      Start ${BRAND.name} hidden at every logon and keep it
+                      running after a crash
   connect <server-url> Configure Claude Code for a remote ${BRAND.slug} server
                       (npx ${BRAND.slug} connect http://host:20128 — no install needed)
   show [tool…]        Show each CLI tool's current ${BRAND.slug} config and models
@@ -265,6 +281,28 @@ function killCloudflaredByAppPort(appPort) {
   return pids;
 }
 
+// Pids that must never be killed by the sweep below: this process, and every ancestor
+// of it.
+//
+// The login-item supervisor (src/cli/tray/watchdog.js) spawns this CLI as its child and
+// is meant to outlive it. The sweep matches any node process whose command line mentions
+// the brand slug, and the supervisor's own path contains it — so without this exclusion
+// starting the gateway would kill the process whose job is to restart it, leaving nothing
+// running at all. Ancestry is resolved once, in a single call.
+function protectedPids() {
+  const protectedSet = new Set([process.pid]);
+  try {
+    const out = execSync(
+      `powershell -NonInteractive -WindowStyle Hidden -Command "$p=${process.pid}; for($i=0;$i -lt 10;$i++){ $o=Get-CimInstance Win32_Process -Filter (\\"ProcessId=$p\\") -ErrorAction SilentlyContinue; if(-not $o){break}; $p=$o.ParentProcessId; if(-not $p){break}; Write-Output $p }"`,
+      { encoding: "utf8", windowsHide: true, timeout: 5000 }
+    );
+    out.split("\n").map((s) => parseInt(s.trim(), 10)).filter(Number.isInteger).forEach((p) => protectedSet.add(p));
+  } catch {
+    // Ancestry unavailable — still protect our own pid.
+  }
+  return protectedSet;
+}
+
 // Kill all flagshiprouter processes
 function killAllAppProcesses(appPort) {
   return new Promise((resolve) => {
@@ -280,6 +318,7 @@ function killAllAppProcesses(appPort) {
 
       const platform = process.platform;
       let pids = [];
+      const keep = protectedPids();
 
       if (platform === "win32") {
         // Windows: use WMI to get full CommandLine (tasklist /V doesn't include it)
@@ -300,7 +339,7 @@ function killAllAppProcesses(appPort) {
               || cmd.includes("next-server");
             if (isAppProcess) {
               const match = line.match(/^"(\d+)"/);
-              if (match && match[1] && match[1] !== process.pid.toString()) {
+              if (match && match[1] && !keep.has(parseInt(match[1], 10))) {
                 pids.push(match[1]);
               }
             }
@@ -327,7 +366,7 @@ function killAllAppProcesses(appPort) {
             if (isAppProcess) {
               const parts = line.trim().split(/\s+/);
               const pid = parts[1];
-              if (pid && !isNaN(pid) && pid !== process.pid.toString()) {
+              if (pid && !isNaN(pid) && !keep.has(parseInt(pid, 10))) {
                 pids.push(pid);
               }
             }

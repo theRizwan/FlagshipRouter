@@ -7,6 +7,33 @@ const BRAND = require("../../brand");
 const APP_NAME = BRAND.slug;
 const APP_LABEL = `com.${BRAND.slug}.autostart`;
 
+// Windows state shared with the login-item supervisor (see watchdog.js).
+function windowsStateDir() {
+  const base = process.env.APPDATA || path.join(process.env.USERPROFILE || "", "AppData", "Roaming");
+  return path.join(base, BRAND.slug, "autostart");
+}
+
+function windowsWatchdogPath() {
+  return path.resolve(__dirname, "watchdog.js");
+}
+
+/**
+ * Ask a running supervisor to stay down: tray → Quit writes this marker, so the
+ * supervisor stops relaunching instead of fighting the user. It is cleared at the
+ * next logon, when the login item starts the gateway fresh. Best-effort — a missing
+ * marker only means the gateway comes back on the next crash.
+ */
+function requestStop() {
+  try {
+    const dir = windowsStateDir();
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "watchdog.stop"), String(Date.now()));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Resolve the absolute path to this package's cli.js.
  *
@@ -244,13 +271,19 @@ function enableWindows(cliPath) {
   if (!fs.existsSync(startupDir)) return false;
 
   const nodePath = process.execPath;
-  const routerScript = getCliJsPath(cliPath);
-  if (!routerScript) return false;
+  // The login item starts watchdog.js, not cli.js: the supervisor is what keeps the
+  // gateway alive across crashes. If the package layout is unexpected, fall back to
+  // launching cli.js directly rather than writing an entry that cannot start.
+  const watchdog = windowsWatchdogPath();
+  const target = fs.existsSync(watchdog) ? watchdog : getCliJsPath(cliPath);
+  if (!target) return false;
 
-  // Run node + cli.js directly, hidden window. Avoids the fragile
-  // `flagshiprouter.cmd` lookup that depended on the npm prefix path.
+  const cliArgs = target === watchdog ? "--boot" : "--tray --skip-update";
+
+  // Run node hidden (window style 0). Avoids the fragile `flagshiprouter.cmd` lookup
+  // that depended on the npm prefix path, and leaves no cmd.exe window to close.
   const vbsContent = `Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run """${nodePath}"" ""${routerScript}"" --tray --skip-update", 0, False
+WshShell.Run """${nodePath}"" ""${target}"" ${cliArgs}", 0, False
 `;
   fs.writeFileSync(vbsPath, vbsContent);
   return true;
@@ -303,5 +336,6 @@ function disableLinux() {
 module.exports = {
   enableAutoStart,
   disableAutoStart,
-  isAutoStartEnabled
+  isAutoStartEnabled,
+  requestStop
 };
