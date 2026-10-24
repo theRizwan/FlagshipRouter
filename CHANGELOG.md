@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `flagshiprouter autostart <enable|disable|status>`: start the gateway automatically at every logon, hidden, and keep it running. The logon entry launches a supervisor (`cli/src/cli/tray/watchdog.js`) that runs the gateway with no console window and relaunches it after a crash or an End task, with backoff if it keeps failing. `tray → Quit` still stops it deliberately, and it returns at the next logon. No administrator rights required.
+
+### Fixed
+- The CLI's startup kill sweep matched any node process whose command line mentioned the brand slug, which included the supervisor that launched it — so a supervised gateway killed its own supervisor. Ancestors of the running CLI (and the CLI itself) are now excluded from that sweep.
+
 ## 1.1.0 — 2026-10-20
 
 ### Fixed

@@ -103,6 +103,12 @@ function handleClick(index, options, onAutostartToggle) {
     } catch (e) {}
   } else if (index === MENU_INDEX.QUIT) {
     console.log("\n👋 Shutting down...");
+    // Tell the login-item supervisor this stop is deliberate, so it does not
+    // relaunch the gateway we are about to kill.
+    try {
+      const { requestStop } = require("./autostart");
+      requestStop();
+    } catch (e) {}
     if (onQuit) onQuit();
     killTray();
     setTimeout(() => process.exit(0), 500);

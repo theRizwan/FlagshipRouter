@@ -17,6 +17,20 @@ Starts the router on `http://localhost:20128`, opens the browser UI, and keeps a
 | `-t, --tray` | Run in the system tray (background) |
 | `-v, --version` | Show version |
 
+## Auto-start at logon
+
+```bash
+flagshiprouter autostart enable    # start hidden at every logon; keep it running
+flagshiprouter autostart status    # show whether it is enabled
+flagshiprouter autostart disable   # remove the logon entry
+```
+
+On Windows this writes a hidden launcher to your Startup folder that runs a supervisor. The supervisor starts the gateway with no console window and relaunches it if it crashes or is ended from Task Manager, backing off if it keeps failing. It needs no administrator rights, and nothing is installed system-wide.
+
+To stop it on purpose, use the tray icon → **Quit**: the supervisor honours that and stays down until the next logon. `disable` removes the logon entry (it does not stop a gateway that is already running).
+
+Supervisor activity is logged to `%APPDATA%\flagshiprouter\autostart\watchdog.log`.
+
 Data lives in `~/.flagshiprouter/` (macOS/Linux) or `%APPDATA%\flagshiprouter\` (Windows); set `DATA_DIR` to move it.
 
 The product name, command name and data folder come from `brand.json` in the repository.
