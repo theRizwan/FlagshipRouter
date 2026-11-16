@@ -145,6 +145,7 @@ import p144 from "./muse-web.js";
 import p146 from "./chatgpt-web.js";
 import p147 from "./veoaifree-web.js";
 import p151 from "./uc-web.js";
+import p152 from "./teapotrouter.js";
 export default [
   p0,
   p1,
@@ -235,6 +236,7 @@ export default [
   p139,
   p84,
   p85,
+  p152,
   p86,
   p87,
   p88,
