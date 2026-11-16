@@ -1,0 +1,35 @@
+export default {
+  id: "teapotrouter",
+  alias: "tpr",
+  aliases: ["teapot-router"],
+  uiAlias: "tpr",
+  display: {
+    name: "TeaPotRouter",
+    icon: "emoji_food_beverage",
+    color: "#0F766E",
+    textIcon: "TP",
+    website: "https://teapotrouter.com",
+    notice: {
+      apiKeyUrl: "https://teapotrouter.com/dashboard",
+    },
+  },
+  category: "apikey",
+  authType: "apikey",
+  authModes: ["apikey"],
+  transport: {
+    baseUrl: "https://api.teapotrouter.com/v1/chat/completions",
+    validateUrl: "https://api.teapotrouter.com/v1/models",
+  },
+  models: [
+    { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
+    { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5" },
+    { id: "claude-fable-5-2", name: "Claude Fable 5.2" },
+    { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
+    { id: "claude-opus-5", name: "Claude Opus 5" },
+    { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
+    { id: "claude-fable-5", name: "Claude Fable 5" },
+    { id: "gpt-6-astra", name: "GPT-6 Astra" },
+    { id: "gpt-6.1-sol", name: "GPT-6.1 Sol" },
+    { id: "gpt-6.1-terra", name: "GPT-6.1 Terra" },
+  ],
+};
